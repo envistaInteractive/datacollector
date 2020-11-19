@@ -41,7 +41,7 @@ public abstract class AbstractMongoDBSource extends BaseSource {
 
   protected ErrorRecordHandler errorRecordHandler;
   protected MongoCollection<Document> mongoCollection;
-  protected MongoCursor<Document> cursor;
+  protected MongoCursor cursor;
 
   private MongoClient mongoClient;
 

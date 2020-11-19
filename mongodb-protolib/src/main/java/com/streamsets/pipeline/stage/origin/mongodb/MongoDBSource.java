@@ -115,7 +115,7 @@ public class MongoDBSource extends AbstractMongoDBSource {
 
       while (numRecords < batchSize && System.currentTimeMillis() < batchWaitTime) {
         LOG.trace("Trying to get next doc from cursor");
-        Document doc = cursor.tryNext();
+        Document doc = (Document) cursor.tryNext();
         if (null == doc) {
           LOG.trace("Doc was null");
           if (!configBean.isCapped) {
