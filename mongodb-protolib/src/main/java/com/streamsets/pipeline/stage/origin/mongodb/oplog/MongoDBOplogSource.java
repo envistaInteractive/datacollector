@@ -245,7 +245,7 @@ public class MongoDBOplogSource extends AbstractMongoDBSource {
   }
 
   private Record getOplogRecord() throws IOException {
-    Document doc = cursor.tryNext();
+    Document doc = (Document) cursor.tryNext();
     if (doc != null) {
       validateOpLogDocument(doc);
       BsonTimestamp timestamp = (BsonTimestamp) doc.get(TIMESTAMP_FIELD);

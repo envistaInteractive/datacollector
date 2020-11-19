@@ -346,6 +346,7 @@
             <exclude>**/*.xls</exclude>
             <exclude>**/*.xlsx</exclude>
             <exclude>**/*.properties</exclude>
+            <exclude>**/*.java</exclude>
 
             <!-- Protobuf generated files which are checked in for testing-->
             <exclude>commonlib/src/test/java/com/streamsets/pipeline/lib/util/EmployeeProto.java</exclude>
