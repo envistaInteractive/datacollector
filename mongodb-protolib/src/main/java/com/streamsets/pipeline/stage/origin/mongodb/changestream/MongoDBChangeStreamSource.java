@@ -84,7 +84,16 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
             } catch (MongoCursorNotFoundException e) {
                 LOG.error("Cursor not found, reinitializing cursor...", e);
                 initStateIfNeeded(lastResumeToken, batchSize);
-            } catch (IOException | MongoException | IllegalArgumentException e) {
+            } catch (MongoException e) {
+                if (StringUtils.containsIgnoreCase(e.getMessage(), "Cursor has been closed")) {
+                    LOG.error("Cursor has been closed, reinitializing cursor...", e);
+                    initStateIfNeeded(lastResumeToken, batchSize);
+                }
+                else {
+                    LOG.error("MongoError while getting Change Stream Record", e);
+                    errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
+                }
+            } catch (IOException | IllegalArgumentException e) {
                 LOG.error("Error while getting Change Stream Record", e);
                 errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
             }
