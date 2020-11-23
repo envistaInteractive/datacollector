@@ -1,5 +1,6 @@
 package com.streamsets.pipeline.stage.origin.mongodb.changestream;
 
+import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.model.Aggregates;
@@ -70,11 +71,7 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
 
         long batchWaitTime = System.currentTimeMillis() + (configBean.maxBatchWaitTime * 1000);
         int numOfRecordsProduced = 0;
-        try {
-            initStateIfNeeded(lastSourceToken, batchSize);
-        } catch (DecoderException e) {
-            throw new IllegalArgumentException(e);
-        }
+        initStateIfNeeded(lastSourceToken, batchSize);
         while (numOfRecordsProduced < batchSize) {
             try {
                 Record record = getChangeStreamRecord();
@@ -84,6 +81,9 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
                 } else if (breakOrWaitIfNeeded(batchWaitTime - System.currentTimeMillis())) {
                     break;
                 }
+            } catch (MongoCursorNotFoundException e) {
+                LOG.error("Cursor not found, reinitializing cursor...", e);
+                initStateIfNeeded(lastResumeToken, batchSize);
             } catch (IOException | MongoException | IllegalArgumentException e) {
                 LOG.error("Error while getting Change Stream Record", e);
                 errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
@@ -108,14 +108,22 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
         return !StringUtils.isEmpty(lastToken);
     }
 
-    private void initStateIfNeeded(String lastToken, int batchSize) throws DecoderException {
-        if (shouldInitOffset(lastToken)) {
-            lastResumeToken = lastToken;
-        }
-        if (cursor == null) {
-            prepareCursor(lastResumeToken,
+    private void initStateIfNeeded(String lastToken, int batchSize) {
+        try {
+            if (shouldInitOffset(lastToken)) {
+                lastResumeToken = lastToken;
+            }
+            if (cursor == null) {
+                prepareCursor(
+                    lastResumeToken,
                     mongoDBChangeStreamSourceConfigBean.filterChangeStreamOpTypes,
-                    mongoDBChangeStreamSourceConfigBean.fullDocument, batchSize);
+                    mongoDBChangeStreamSourceConfigBean.fullDocument,
+                    batchSize
+              );
+            }
+        }
+        catch (DecoderException e) {
+            throw new IllegalArgumentException(e);
         }
     }
 
