@@ -69,12 +69,14 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
             checkBatchSize = false;
         }
 
+        int numContiguousErrors = 0;
         long batchWaitTime = System.currentTimeMillis() + (configBean.maxBatchWaitTime * 1000);
         int numOfRecordsProduced = 0;
         initStateIfNeeded(lastSourceToken, batchSize);
         while (numOfRecordsProduced < batchSize) {
             try {
                 Record record = getChangeStreamRecord();
+                numContiguousErrors = 0;
                 if (record != null) {
                     batchMaker.addRecord(record);
                     numOfRecordsProduced++;
@@ -82,9 +84,11 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
                     break;
                 }
             } catch (MongoCursorNotFoundException e) {
+                numContiguousErrors++;
                 LOG.error("Cursor not found, reinitializing cursor...", e);
                 initStateIfNeeded(lastResumeToken, batchSize);
             } catch (MongoException e) {
+                numContiguousErrors++;
                 if (StringUtils.containsIgnoreCase(e.getMessage(), "Cursor has been closed")) {
                     LOG.error("Cursor has been closed, reinitializing cursor...", e);
                     initStateIfNeeded(lastResumeToken, batchSize);
@@ -94,8 +98,13 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
                     errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
                 }
             } catch (IOException | IllegalArgumentException e) {
+                numContiguousErrors++;
                 LOG.error("Error while getting Change Stream Record", e);
                 errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
+            }
+            if (numContiguousErrors >= 100) {
+                throw new RuntimeException("Too many continuous errors > 100 when trying to re-initialize the change " +
+                    "stream");
             }
         }
         return createOffset();
