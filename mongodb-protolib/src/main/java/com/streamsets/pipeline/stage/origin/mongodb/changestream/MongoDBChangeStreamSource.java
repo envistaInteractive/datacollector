@@ -95,12 +95,14 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
                 }
                 else {
                     LOG.error("MongoError while getting Change Stream Record", e);
-                    errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
+                    initStateIfNeeded(lastResumeToken, batchSize);
+                    // errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
                 }
             } catch (IOException | IllegalArgumentException e) {
                 numContiguousErrors++;
-                LOG.error("Error while getting Change Stream Record", e);
-                errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
+                LOG.error("Error while getting Change Stream Record, reinitializing cursor...", e);
+                initStateIfNeeded(lastResumeToken, batchSize);
+                // errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
             }
             if (numContiguousErrors >= 100) {
                 throw new RuntimeException("Too many continuous errors > 100 when trying to re-initialize the change " +
