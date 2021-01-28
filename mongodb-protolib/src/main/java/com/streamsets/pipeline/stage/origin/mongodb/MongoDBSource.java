@@ -17,6 +17,7 @@ package com.streamsets.pipeline.stage.origin.mongodb;
 
 import com.mongodb.CursorType;
 import com.mongodb.MongoClientException;
+import com.mongodb.MongoException;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import com.streamsets.pipeline.api.BatchMaker;
@@ -70,12 +71,12 @@ public class MongoDBSource extends AbstractMongoDBSource {
       // Initial offset is required if offset type is ObjectId or Date.
       if (configBean.initialOffset == null || configBean.initialOffset.isEmpty()) {
         issues.add(
-            getContext().createConfigIssue(
-                Groups.MONGODB.name(),
-                MongoDBConfig.CONFIG_PREFIX + "initialOffset",
-                Errors.MONGODB_19,
-                configBean.initialOffset
-            )
+          getContext().createConfigIssue(
+            Groups.MONGODB.name(),
+            MongoDBConfig.CONFIG_PREFIX + "initialOffset",
+            Errors.MONGODB_19,
+            configBean.initialOffset
+          )
         );
         return issues;
       }
@@ -84,13 +85,13 @@ public class MongoDBSource extends AbstractMongoDBSource {
         initialDate = dateFormatter.parse(configBean.initialOffset);
       } catch (ParseException e) {
         issues.add(
-            getContext().createConfigIssue(
-                Groups.MONGODB.name(),
-                MongoDBConfig.CONFIG_PREFIX + "initialOffset",
-                Errors.MONGODB_05,
-                configBean.initialOffset,
-                configBean.offsetType.getLabel()
-            )
+          getContext().createConfigIssue(
+            Groups.MONGODB.name(),
+            MongoDBConfig.CONFIG_PREFIX + "initialOffset",
+            Errors.MONGODB_05,
+            configBean.initialOffset,
+            configBean.offsetType.getLabel()
+          )
         );
       }
     }
@@ -115,23 +116,32 @@ public class MongoDBSource extends AbstractMongoDBSource {
 
       while (numRecords < batchSize && System.currentTimeMillis() < batchWaitTime) {
         LOG.trace("Trying to get next doc from cursor");
-        Document doc = (Document) cursor.tryNext();
-        if (null == doc) {
-          LOG.trace("Doc was null");
-          if (!configBean.isCapped) {
-            LOG.trace("Collection is not capped.");
-            // If this is not a capped collection, then this means we've reached the end of the data.
-            // and should get a new cursor.
-            LOG.trace("Closing cursor.");
-            cursor.close();
-            cursor = null;
-            // Wait the remaining time we have for this batch before trying again.
-            long waitTime = Math.max(0, batchWaitTime - System.currentTimeMillis());
-            LOG.trace("Sleeping for: {}", waitTime);
-            ThreadUtil.sleep(waitTime);
-            conditionallyGenerateNoMoreDataEvent();
-            return nextSourceOffset;
+        Document doc = null;
+
+        try {
+          doc = (Document) cursor.tryNext();
+          if (null == doc) {
+            LOG.trace("Doc was null");
+            if (!configBean.isCapped) {
+              LOG.trace("Collection is not capped.");
+              // If this is not a capped collection, then this means we've reached the end of the data.
+              // and should get a new cursor.
+              LOG.trace("Closing cursor.");
+              cursor.close();
+              cursor = null;
+              // Wait the remaining time we have for this batch before trying again.
+              long waitTime = Math.max(0, batchWaitTime - System.currentTimeMillis());
+              LOG.trace("Sleeping for: {}", waitTime);
+              ThreadUtil.sleep(waitTime);
+              conditionallyGenerateNoMoreDataEvent();
+              return nextSourceOffset;
+            }
+            continue;
           }
+        }
+        catch (MongoException | IllegalArgumentException e) {
+          LOG.error("Error while fetching record from the cursor", e);
+          prepareCursor(maxBatchSize, configBean.offsetField, lastSourceOffset);
           continue;
         }
 
@@ -143,9 +153,9 @@ public class MongoDBSource extends AbstractMongoDBSource {
           offsetFieldObject = getNestedFieldObject(doc);
         }
         if (offsetFieldObject == null
-            || (configBean.offsetType == OffsetFieldType.OBJECTID && !(offsetFieldObject instanceof ObjectId))
-            || (configBean.offsetType == OffsetFieldType.STRING && !(offsetFieldObject instanceof String))
-            || (configBean.offsetType == OffsetFieldType.DATE && !(offsetFieldObject instanceof Date))) {
+          || (configBean.offsetType == OffsetFieldType.OBJECTID && !(offsetFieldObject instanceof ObjectId))
+          || (configBean.offsetType == OffsetFieldType.STRING && !(offsetFieldObject instanceof String))
+          || (configBean.offsetType == OffsetFieldType.DATE && !(offsetFieldObject instanceof Date))) {
           LOG.debug(Errors.MONGODB_05.getMessage(), doc.toString(), configBean.offsetType.getLabel());
           errorRecordHandler.onError(Errors.MONGODB_05, doc, configBean.offsetType.getLabel());
           ++errorRecordsSinceLastNMREvent;
@@ -166,12 +176,12 @@ public class MongoDBSource extends AbstractMongoDBSource {
         nextSourceOffset = getNextSourceOffset(doc);
 
         final String recordContext =
-            MongoDBUtil.getSourceRecordId(
-                configBean.mongoConfig.connectionString,
-                configBean.mongoConfig.database,
-                configBean.mongoConfig.collection,
-                nextSourceOffset
-            );
+          MongoDBUtil.getSourceRecordId(
+            configBean.mongoConfig.connectionString,
+            configBean.mongoConfig.database,
+            configBean.mongoConfig.collection,
+            nextSourceOffset
+          );
 
         Record record = getContext().createRecord(recordContext);
         record.set(Field.create(fields));
@@ -263,29 +273,31 @@ public class MongoDBSource extends AbstractMongoDBSource {
         }
       }
       LOG.debug("Getting new cursor with params: {} {} {}",
-          maxBatchSize,
-          offsetField,
-          configBean.offsetType == OffsetFieldType.STRING ? stringOffset : configBean.offsetType == OffsetFieldType.OBJECTID ? objectIdOffset : dateOffset);
+        maxBatchSize,
+        offsetField,
+        configBean.offsetType == OffsetFieldType.STRING ? stringOffset : configBean.offsetType == OffsetFieldType.OBJECTID ? objectIdOffset : dateOffset);
 
       if (configBean.isCapped) {
         cursor = mongoCollection
-            .find(Filters.gt(
-                offsetField,
-                configBean.offsetType ==  OffsetFieldType.STRING ? stringOffset : configBean.offsetType == OffsetFieldType.OBJECTID ? objectIdOffset : dateOffset
-            ))
-            .cursorType(CursorType.TailableAwait)
-            .batchSize(maxBatchSize)
-            .iterator();
+          .find(Filters.gt(
+            offsetField,
+            configBean.offsetType ==  OffsetFieldType.STRING ? stringOffset : configBean.offsetType == OffsetFieldType.OBJECTID ? objectIdOffset : dateOffset
+          ))
+          .cursorType(CursorType.TailableAwait)
+          .batchSize(maxBatchSize)
+          .noCursorTimeout(true)
+          .iterator();
       } else {
         cursor = mongoCollection
-            .find(Filters.gt(
-                offsetField,
-                configBean.offsetType ==  OffsetFieldType.STRING ? stringOffset : configBean.offsetType == OffsetFieldType.OBJECTID ? objectIdOffset : dateOffset
-            ))
-            .sort(Sorts.ascending(offsetField))
-            .cursorType(CursorType.NonTailable)
-            .batchSize(maxBatchSize)
-            .iterator();
+          .find(Filters.gt(
+            offsetField,
+            configBean.offsetType ==  OffsetFieldType.STRING ? stringOffset : configBean.offsetType == OffsetFieldType.OBJECTID ? objectIdOffset : dateOffset
+          ))
+          .sort(Sorts.ascending(offsetField))
+          .cursorType(CursorType.NonTailable)
+          .batchSize(maxBatchSize)
+          .noCursorTimeout(true)
+          .iterator();
       }
     }
   }
@@ -293,9 +305,9 @@ public class MongoDBSource extends AbstractMongoDBSource {
   private void conditionallyGenerateNoMoreDataEvent() {
     if(recordsSinceLastNMREvent != 0 || errorRecordsSinceLastNMREvent != 0) {
       NoMoreDataEvent.EVENT_CREATOR.create(getContext())
-          .with(NoMoreDataEvent.RECORD_COUNT, recordsSinceLastNMREvent)
-          .with(NoMoreDataEvent.ERROR_COUNT, errorRecordsSinceLastNMREvent)
-          .createAndSend();
+        .with(NoMoreDataEvent.RECORD_COUNT, recordsSinceLastNMREvent)
+        .with(NoMoreDataEvent.ERROR_COUNT, errorRecordsSinceLastNMREvent)
+        .createAndSend();
       recordsSinceLastNMREvent = 0;
       errorRecordsSinceLastNMREvent = 0;
     }

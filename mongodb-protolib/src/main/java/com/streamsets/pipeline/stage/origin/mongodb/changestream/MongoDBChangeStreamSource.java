@@ -131,15 +131,29 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
     private void initStateIfNeeded(String lastToken, int batchSize) {
         try {
             if (shouldInitOffset(lastToken)) {
+                LOG.info("Offset initialization required. Last Token: {}", lastToken);
                 lastResumeToken = lastToken;
             }
             if (cursor == null) {
-                prepareCursor(
-                    lastResumeToken,
-                    mongoDBChangeStreamSourceConfigBean.filterChangeStreamOpTypes,
-                    mongoDBChangeStreamSourceConfigBean.fullDocument,
-                    batchSize
-              );
+                LOG.info("Cursor null while initializing state. Last Token: {} Batch Size: {}", lastToken, batchSize);
+                try {
+                  prepareCursor(
+                      lastResumeToken,
+                      mongoDBChangeStreamSourceConfigBean.filterChangeStreamOpTypes,
+                      mongoDBChangeStreamSourceConfigBean.fullDocument,
+                      batchSize
+                  );
+                }
+                catch (Exception e) {
+                  LOG.error("Error while preparing cursor with last resume token " + lastResumeToken + ", hence " +
+                      "resetting origin", e);
+                  prepareCursor(
+                      "",
+                      mongoDBChangeStreamSourceConfigBean.filterChangeStreamOpTypes,
+                      mongoDBChangeStreamSourceConfigBean.fullDocument,
+                      batchSize
+                  );
+                }
             }
         }
         catch (DecoderException e) {
@@ -178,6 +192,7 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
     }
 
     private String createOffset() {
+        LOG.info("Creating offset using last resume token: {}", lastResumeToken);
         return lastResumeToken;
     }
 
