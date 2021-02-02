@@ -223,9 +223,6 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
         ChangeStreamDocument<Document> changeStreamDoc = (ChangeStreamDocument<Document>) cursor.tryNext();
         if (changeStreamDoc != null) {
             lastResumeToken = Hex.encodeHexString(changeStreamDoc.getResumeToken().getBinary("_data").getData());
-            if (LOG.isInfoEnabled()) {
-                LOG.info("Last Resume Token: {}", lastResumeToken);
-            }
 
             String documentKey = null;
             if (changeStreamDoc.getDocumentKey() != null) {
@@ -234,6 +231,10 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
                 } else if (changeStreamDoc.getDocumentKey().get("_id").getBsonType().equals(BsonType.STRING)) {
                     documentKey = changeStreamDoc.getDocumentKey().getString("_id").getValue();
                 }
+            }
+
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Id: {} ; Last Resume Token: {}", documentKey, lastResumeToken);
             }
 
             record = getContext().createRecord(
