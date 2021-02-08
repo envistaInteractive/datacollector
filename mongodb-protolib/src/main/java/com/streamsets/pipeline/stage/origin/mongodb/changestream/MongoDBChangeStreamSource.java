@@ -209,6 +209,9 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
             case UPDATE:
                 operationType = OperationType.UPDATE_CODE;
                 break;
+            case REPLACE:
+                operationType = OperationType.REPLACE_CODE;
+                break;
             case DELETE:
                 operationType = OperationType.DELETE_CODE;
                 break;

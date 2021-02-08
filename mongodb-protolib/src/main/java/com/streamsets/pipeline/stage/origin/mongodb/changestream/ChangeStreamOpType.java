@@ -5,7 +5,8 @@ import com.streamsets.pipeline.api.Label;
 public enum ChangeStreamOpType implements Label{
   INSERT("INSERT(i)", "insert"),
   DELETE("DELETE(d)", "delete"),
-  UPDATE("UPDATE(u)", "update");
+  UPDATE("UPDATE(u)", "update"),
+  REPLACE("REPLACE(r)", "replace");
 
   private final String label;
   private final String op;
