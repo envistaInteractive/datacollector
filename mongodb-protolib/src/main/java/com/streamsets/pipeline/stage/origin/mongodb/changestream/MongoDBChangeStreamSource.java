@@ -22,10 +22,7 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.bson.BsonBinary;
-import org.bson.BsonDocument;
-import org.bson.BsonType;
-import org.bson.Document;
+import org.bson.*;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -225,7 +222,14 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
         Record record = null;
         ChangeStreamDocument<Document> changeStreamDoc = (ChangeStreamDocument<Document>) cursor.tryNext();
         if (changeStreamDoc != null) {
-            lastResumeToken = Hex.encodeHexString(changeStreamDoc.getResumeToken().getBinary("_data").getData());
+
+            try {
+              lastResumeToken = Hex.encodeHexString(changeStreamDoc.getResumeToken().getBinary("_data").getData());
+            } catch (BsonInvalidOperationException e) {
+              // handle exception in the case of mongoDB 4.0+ where the data type of resume token has now changed
+              // to already be a string.
+              lastResumeToken = changeStreamDoc.getResumeToken().getString("_data").getValue();
+            }
 
             String documentKey = null;
             if (changeStreamDoc.getDocumentKey() != null) {
