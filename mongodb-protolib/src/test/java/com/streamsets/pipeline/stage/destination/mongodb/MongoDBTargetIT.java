@@ -15,7 +15,9 @@
  */
 package com.streamsets.pipeline.stage.destination.mongodb;
 
-import com.mongodb.MongoClient;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -63,7 +65,10 @@ public class MongoDBTargetIT {
 
   @BeforeClass
   public static void setUpClass() throws Exception {
-    mongo = new MongoClient(mongoContainer.getContainerIpAddress(), mongoContainer.getMappedPort(MongoDBConfig.MONGO_DEFAULT_PORT));
+    ConnectionString connectionString = new ConnectionString(
+        "mongodb://" + mongoContainer.getContainerIpAddress() + ":" + mongoContainer.getMappedPort(MongoDBConfig.MONGO_DEFAULT_PORT)
+    );
+    mongo = MongoClients.create(connectionString);
   }
 
   @AfterClass
@@ -234,7 +239,7 @@ public class MongoDBTargetIT {
     mongoTargetConfigBean.mongoConfig.username = null;
     mongoTargetConfigBean.mongoConfig.password = null;
     mongoTargetConfigBean.uniqueKeyField = ImmutableList.of("/randomUniqueKeyField");
-    mongoTargetConfigBean.writeConcern = WriteConcernLabel.NORMAL;
+    mongoTargetConfigBean.writeConcern = WriteConcernLabel.ACKNOWLEDGED;
 
     TargetRunner targetRunner = new TargetRunner.Builder(
       MongoDBDTarget.class,

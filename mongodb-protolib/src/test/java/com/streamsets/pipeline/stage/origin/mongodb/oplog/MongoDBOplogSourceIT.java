@@ -16,9 +16,11 @@
 package com.streamsets.pipeline.stage.origin.mongodb.oplog;
 
 import com.google.common.collect.Sets;
+import com.mongodb.ConnectionString;
 import com.mongodb.CursorType;
-import com.mongodb.MongoClient;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -90,7 +92,8 @@ public class MongoDBOplogSourceIT {
     LOG.info("Initializing");
     mongoContainerMappedPort = mongoContainer.getMappedPort(MongoDBConfig.MONGO_DEFAULT_PORT);
     mongoContainerIp = mongoContainer.getContainerIpAddress();//192.168.99.101
-    mongoClient = new MongoClient(mongoContainerIp, mongoContainerMappedPort);
+    ConnectionString connectionString = new ConnectionString("mongodb://" + mongoContainerIp + ":"  + mongoContainerMappedPort);
+    mongoClient = MongoClients.create(connectionString);
   }
 
   @Before
@@ -482,7 +485,7 @@ public class MongoDBOplogSourceIT {
 
   @AfterClass
   public static void destroy() throws Exception {
-    mongoClient.dropDatabase(DATABASE);
+    mongoClient.getDatabase(DATABASE).drop();
     mongoClient.close();
   }
 }

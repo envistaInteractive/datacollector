@@ -16,7 +16,7 @@
 package com.streamsets.pipeline.stage.origin.mongodb;
 
 import com.mongodb.CursorType;
-import com.mongodb.MongoClient;
+import com.mongodb.client.MongoClient;
 import com.mongodb.MongoQueryException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;

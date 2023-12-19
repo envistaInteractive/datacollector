@@ -15,7 +15,9 @@
  */
 package com.streamsets.pipeline.stage.origin.mongodb;
 
-import com.mongodb.MongoClient;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CreateCollectionOptions;
@@ -83,8 +85,9 @@ public class MongoDBSourceIT {
     }
     mongoContainerMappedPort = mongoContainer.getMappedPort(MongoDBConfig.MONGO_DEFAULT_PORT);
     mongoContainerIp = mongoContainer.getContainerIpAddress();
-
-    MongoClient mongo = new MongoClient(mongoContainerIp, mongoContainerMappedPort);
+    //Generate the connectionString
+    ConnectionString connectionString = new ConnectionString("mongodb://" + mongoContainerIp + ":" + mongoContainerMappedPort);
+    MongoClient mongo = MongoClients.create(connectionString);
     MongoDatabase db = mongo.getDatabase(DATABASE_NAME);
     db.createCollection(CAPPED_COLLECTION, new CreateCollectionOptions().capped(true).sizeInBytes(ONE_MB));
     db.createCollection(COLLECTION);
@@ -547,7 +550,8 @@ public class MongoDBSourceIT {
   }
 
   private void insertDocsWithStringID(String collectionname){
-    MongoClient mongo = new MongoClient(mongoContainerIp, mongoContainerMappedPort);
+    ConnectionString connectionString = new ConnectionString("mongodb://" + mongoContainerIp + ":" + mongoContainerMappedPort);
+    MongoClient mongo = MongoClients.create(connectionString);
     MongoDatabase db = mongo.getDatabase(DATABASE_NAME);
 
     MongoCollection<Document> collection = db.getCollection(collectionname);
@@ -558,7 +562,9 @@ public class MongoDBSourceIT {
   }
 
   private void insertNewDocs(String collectionName) {
-    MongoClient mongo = new MongoClient(mongoContainerIp, mongoContainerMappedPort);
+    ConnectionString connectionString = new ConnectionString("mongodb://" + mongoContainerIp + ":" + mongoContainerMappedPort);
+    MongoClient mongo = MongoClients.create(connectionString);
+
     MongoDatabase db = mongo.getDatabase(DATABASE_NAME);
 
     MongoCollection<Document> collection = db.getCollection(collectionName);
@@ -569,7 +575,8 @@ public class MongoDBSourceIT {
 
   private void insertDocsWithDateField(String collectionName) throws Exception
   {
-    MongoClient mongo = new MongoClient(mongoContainerIp, mongoContainerMappedPort);
+    ConnectionString connectionString = new ConnectionString("mongodb://" + mongoContainerIp + ":" + mongoContainerMappedPort);
+    MongoClient mongo = MongoClients.create(connectionString);
     MongoDatabase db = mongo.getDatabase(DATABASE_NAME);
 
     MongoCollection<Document> collection = db.getCollection(collectionName);
@@ -581,7 +588,8 @@ public class MongoDBSourceIT {
   }
 
   private void insertNewDocsIdInsideDoc(String collectionName, int level, int size) {
-    MongoClient mongo = new MongoClient(mongoContainerIp, mongoContainerMappedPort);
+    ConnectionString connectionString = new ConnectionString("mongodb://" + mongoContainerIp + ":" + mongoContainerMappedPort);
+    MongoClient mongo = MongoClients.create(connectionString);
     MongoDatabase db = mongo.getDatabase(DATABASE_NAME);
 
     MongoCollection<Document> collection = db.getCollection(collectionName);

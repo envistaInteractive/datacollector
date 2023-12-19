@@ -23,15 +23,15 @@ import com.streamsets.pipeline.api.Label;
 public enum WriteConcernLabel implements Label {
   ACKNOWLEDGED("Acknowledged", WriteConcern.ACKNOWLEDGED),
   UNACKNOWLEDGED("Unacknowledged", WriteConcern.UNACKNOWLEDGED),
-  FSYNCED("FSynced", WriteConcern.FSYNCED),
+  //FSYNCED("FSynced", WriteConcern.FSYNCED),
   JOURNALED("Journaled", WriteConcern.JOURNALED),
-  REPLICA_ACKNOWLEDGED("Replica Acknowledged", WriteConcern.REPLICA_ACKNOWLEDGED),
-  NORMAL("Normal", WriteConcern.NORMAL),
-  SAFE("Safe", WriteConcern.SAFE),
+  //REPLICA_ACKNOWLEDGED("Replica Acknowledged", WriteConcern.REPLICA_ACKNOWLEDGED),
+  //NORMAL("Normal", WriteConcern.NORMAL),
+  //SAFE("Safe", WriteConcern.SAFE),
   MAJORITY("Majority", WriteConcern.MAJORITY),
-  FSYNC_SAFE("FSync Safe", WriteConcern.FSYNC_SAFE),
-  JOURNAL_SAFE("Journal Safe", WriteConcern.JOURNAL_SAFE),
-  REPLICAS_SAFE("Replicas Safe", WriteConcern.REPLICAS_SAFE),
+  //FSYNC_SAFE("FSync Safe", WriteConcern.FSYNC_SAFE),
+  //JOURNAL_SAFE("Journal Safe", WriteConcern.JOURNAL_SAFE),
+  //REPLICAS_SAFE("Replicas Safe", WriteConcern.REPLICAS_SAFE),
   ;
 
   private final String label;

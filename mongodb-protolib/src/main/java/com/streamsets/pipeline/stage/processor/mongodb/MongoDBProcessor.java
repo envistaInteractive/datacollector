@@ -18,7 +18,7 @@ package com.streamsets.pipeline.stage.processor.mongodb;
 
 import com.google.common.base.Throwables;
 import com.google.common.cache.LoadingCache;
-import com.mongodb.MongoClient;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.streamsets.pipeline.api.Batch;
 import com.streamsets.pipeline.api.Field;

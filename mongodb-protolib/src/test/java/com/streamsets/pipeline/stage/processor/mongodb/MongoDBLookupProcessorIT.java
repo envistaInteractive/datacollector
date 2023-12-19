@@ -15,7 +15,9 @@
  */
 package com.streamsets.pipeline.stage.processor.mongodb;
 
-import com.mongodb.MongoClient;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.streamsets.pipeline.api.Field;
@@ -54,7 +56,9 @@ public class MongoDBLookupProcessorIT {
 
   @BeforeClass
   public static void setUpClass() throws Exception {
-    mongo = new MongoClient(mongoContainer.getContainerIpAddress(), mongoContainer.getMappedPort(MongoDBConfig.MONGO_DEFAULT_PORT));
+    ConnectionString connectionString = new ConnectionString
+        ("mongodb://" + mongoContainer.getContainerIpAddress() + ":" + mongoContainer.getMappedPort(MongoDBConfig.MONGO_DEFAULT_PORT));
+    mongo = MongoClients.create(connectionString);
   }
 
   @AfterClass

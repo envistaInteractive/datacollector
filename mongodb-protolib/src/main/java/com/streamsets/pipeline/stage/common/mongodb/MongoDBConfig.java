@@ -15,17 +15,19 @@
  */
 package com.streamsets.pipeline.stage.common.mongodb;
 
-import com.mongodb.MongoClient;
+import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.MongoClientException;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoClientURI;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.connection.SocketSettings;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.StageException;
@@ -35,8 +37,10 @@ import com.streamsets.pipeline.api.credential.CredentialValue;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 public class MongoDBConfig {
 
@@ -411,30 +415,27 @@ public class MongoDBConfig {
       ReadPreference readPreference,
       WriteConcern writeConcern
   ) {
-    MongoClientOptions.Builder optionBuilder = new MongoClientOptions.Builder()
-        .connectionsPerHost(connectionsPerHost)
-        .connectTimeout(connectTimeout)
-        .cursorFinalizerEnabled(cursorFinalizerEnabled)
-        .heartbeatConnectTimeout(heartbeatConnectTimeout)
-        .heartbeatFrequency(heartbeatFrequency)
-        .heartbeatSocketTimeout(heartbeatSocketTimeout)
-        .localThreshold(localThreshold)
-        .maxConnectionIdleTime(maxConnectionIdleTime)
-        .maxConnectionLifeTime(maxConnectionLifeTime)
-        .maxWaitTime(maxWaitTime)
-        .minConnectionsPerHost(minConnectionsPerHost)
-        .minHeartbeatFrequency(minHeartbeatFrequency)
-        .serverSelectionTimeout(serverSelectionTimeout)
-        .socketKeepAlive(socketKeepAlive)
-        .socketTimeout(socketTimeout)
-        .sslEnabled(sslEnabled)
-        .sslInvalidHostNameAllowed(sslInvalidHostNameAllowed)
-        .threadsAllowedToBlockForConnectionMultiplier(threadsAllowedToBlockForConnectionMultiplier);
 
-    // the default value of requiredReplicaSetName is null, so it should be set only if a non-empty string is provided
-    if (!requiredReplicaSetName.isEmpty()) {
-      optionBuilder = optionBuilder.requiredReplicaSetName(requiredReplicaSetName);
-    }
+    MongoClientSettings.Builder optionBuilder =MongoClientSettings.builder().applyConnectionString(
+        new ConnectionString(connectionString))
+        .applyToConnectionPoolSettings(
+          builder -> builder.maxWaitTime(maxWaitTime,TimeUnit.MILLISECONDS)
+          .maxConnectionIdleTime(maxConnectionIdleTime,TimeUnit.MILLISECONDS)
+          .maxConnectionLifeTime(maxConnectionLifeTime,TimeUnit.MILLISECONDS))
+        .applyToClusterSettings(
+            builder -> builder.requiredReplicaSetName(requiredReplicaSetName)
+                .serverSelectionTimeout(serverSelectionTimeout,TimeUnit.MILLISECONDS))
+        .applyToServerSettings(
+            builder -> builder.heartbeatFrequency(heartbeatFrequency,TimeUnit.MILLISECONDS)
+                .minHeartbeatFrequency(minHeartbeatFrequency,TimeUnit.MILLISECONDS))
+        .applyToSocketSettings(
+            builder -> builder.connectTimeout(connectTimeout,TimeUnit.MILLISECONDS)
+                .readTimeout(socketTimeout,TimeUnit.MILLISECONDS))
+        .applyToSslSettings(
+            builder -> builder.enabled(sslEnabled)
+                .invalidHostNameAllowed(sslInvalidHostNameAllowed)
+        );
+
     // read preference is only set by the source
     if (readPreference != null) {
       optionBuilder = optionBuilder.readPreference(readPreference);
@@ -444,10 +445,10 @@ public class MongoDBConfig {
       optionBuilder = optionBuilder.writeConcern(writeConcern);
     }
 
-    MongoClientURI mongoURI;
+    ConnectionString mongoURI;
     List<ServerAddress> servers = new ArrayList<>();
     try {
-      mongoURI = new MongoClientURI(connectionString, optionBuilder);
+      mongoURI = new ConnectionString(connectionString);
     } catch (IllegalArgumentException e) {
       issues.add(context.createConfigIssue(
           Groups.MONGODB.name(),
@@ -478,14 +479,14 @@ public class MongoDBConfig {
     }
 
     if (credentials.isEmpty()) {
-      Optional.ofNullable(mongoURI.getCredentials()).ifPresent(credentials::add);
+      Optional.ofNullable(mongoURI.getCredential()).ifPresent(credentials::add);
     }
 
     try {
       if(isSingleMode) {
-        mongoClient = new MongoClient(servers.get(0), credentials, mongoURI.getOptions());
+        mongoClient = MongoClients.create(optionBuilder.build());
       } else {
-        mongoClient = new MongoClient(servers, credentials, mongoURI.getOptions());
+        mongoClient = MongoClients.create(optionBuilder.build());
       }
     } catch (MongoException e) {
       issues.add(context.createConfigIssue(

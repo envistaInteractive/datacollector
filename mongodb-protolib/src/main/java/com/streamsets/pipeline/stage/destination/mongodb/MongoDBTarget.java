@@ -15,13 +15,14 @@
  */
 package com.streamsets.pipeline.stage.destination.mongodb;
 
-import com.mongodb.MongoClient;
+import com.mongodb.client.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
@@ -150,10 +151,10 @@ public class MongoDBTarget extends BaseTarget {
                 replaceKey.put(removeAndReplaceSlashes(key), record.get(key).getValue())
             );
             documentList.add(
-                new ReplaceOneModel<>(
+                new ReplaceOneModel(
                     replaceKey,
                     document,
-                    new UpdateOptions().upsert(mongoTargetConfigBean.isUpsert)
+                    new ReplaceOptions().upsert(mongoTargetConfigBean.isUpsert)
                 )
             );
             break;
