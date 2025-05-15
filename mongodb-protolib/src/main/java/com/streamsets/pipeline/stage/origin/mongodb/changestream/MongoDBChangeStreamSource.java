@@ -98,7 +98,7 @@ public class MongoDBChangeStreamSource extends AbstractMongoDBSource {
                     initStateIfNeeded(lastResumeToken, batchSize);
                     // errorRecordHandler.onError(Errors.MONGODB_10, e.toString(), e);
                 }
-            } catch (IOException | IllegalArgumentException e) {
+            } catch (Throwable e) {
                 numContiguousErrors++;
                 LOG.error("Error while getting Change Stream Record, reinitializing cursor...", e);
                 initStateIfNeeded(lastResumeToken, batchSize);
