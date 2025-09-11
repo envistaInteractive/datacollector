@@ -422,9 +422,6 @@ public class MongoDBConfig {
           builder -> builder.maxWaitTime(maxWaitTime,TimeUnit.MILLISECONDS)
           .maxConnectionIdleTime(maxConnectionIdleTime,TimeUnit.MILLISECONDS)
           .maxConnectionLifeTime(maxConnectionLifeTime,TimeUnit.MILLISECONDS))
-        .applyToClusterSettings(
-            builder -> builder.requiredReplicaSetName(requiredReplicaSetName)
-                .serverSelectionTimeout(serverSelectionTimeout,TimeUnit.MILLISECONDS))
         .applyToServerSettings(
             builder -> builder.heartbeatFrequency(heartbeatFrequency,TimeUnit.MILLISECONDS)
                 .minHeartbeatFrequency(minHeartbeatFrequency,TimeUnit.MILLISECONDS))
